@@ -1,6 +1,48 @@
 services:
   fedora:
     image: fcrepo/fcrepo:6-tomcat9
+    # The Tomcat image writes server-access logs into the container's
+    # filesystem, which risks filesystem exhaustion and is bad practice. This
+    # edits Tomcat's configuration to make it write to STDOUT (hence, Docker).
+    # This keeps the same command as the image, but it has to be specified
+    # because we specify an entrypoint, which wipes out the container's command.
+    # The sigils ("$") in this script are escaped against Docker's interpolation
+    # by doubling.
+    entrypoint: [
+      "sh",
+      "-c",
+      "if [ ! -e /usr/local/tomcat/conf/server.xml.fixed ]; then \
+           echo \"Fixing configuration.\"; \
+           sed \
+               -e 'b start; :error_0 Q 5; :error_1 Q 6; :error_2 Q 7' \
+               -e ':start; 166 b a; 167 b b; 168 b c; b'
+               -e ':a s/\\(<Valve className=\"org\\.apache\\.catalina\\\
+                        .valves\\.AccessLogValve\" directory\\)=\"logs\"\
+                       /\\1=\"\\/dev\"/' \
+               -e 'T error_0; b' \
+               -e ':b 167 s/prefix=\"localhost_access_log\" suffix=\"\\.txt\"\
+                           /prefix=\"stdout\" suffix=\"\" rotatable=\"false\" \
+                            buffered=\"false\"/' \
+               -e 'T error_1; b' \
+               -e ':c 168 s/pattern=\"\\(%h %l %u %t &quot;%r&quot; %s %b\\)\" \
+                            \\/>\
+                           /pattern=\"[TOMCAT] \\1\" \\/>/' \
+               -e 'T error_2; b' \
+               /usr/local/tomcat/conf/server.xml \
+                   >/usr/local/tomcat/conf/server.xml.edited; \
+           \
+           r=$$?; \
+           if [ $$r -eq 0 ]; then \
+               mv -T /usr/local/tomcat/conf/server.xml.edited \
+                   /usr/local/tomcat/conf/server.xml; \
+               touch /usr/local/tomcat/conf/server.xml.fixed; \
+           else \
+               echo \"Sed failed with exit code $$r.\"; \
+               exit $$r; \
+           fi; \
+       fi; \
+       exec catalina.sh run"
+    ]
     logging:
       driver: "awslogs"
       options:
