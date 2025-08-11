@@ -44,10 +44,7 @@ services:
        exec catalina.sh run"
     ]
     logging:
-      driver: "awslogs"
-      options:
-        awslogs-group: "${FEDORA_LOGGROUP}"
-        awslogs-create-group: "true"
+      driver: local
     environment:
       - CATALINA_OPTS=${FEDORA_OPTIONS}
     healthcheck:
