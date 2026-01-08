@@ -2,7 +2,7 @@ FROM        phusion/baseimage:0.11
 MAINTAINER  Michael B. Klein <michael.klein@northwestern.edu>
 RUN         apt-get update && apt-get upgrade -y \
          && apt-get install -y mediainfo ffmpeg x264 \
-            build-essential git libpcre3-dev zlib1g-dev libssl-dev dnsmasq \
+            build-essential git libpcre3-dev zlib1g-dev libssl-dev \
             # gettext-base provides 'envsubst', used by nginx.sh
             gettext-base \
          && apt-get clean
@@ -20,8 +20,6 @@ RUN         mkdir /data \
 ADD         stat.xsl  /etc/nginx/stat.xsl
 
 ADD         nginx.conf.template /etc/nginx/nginx.conf.template
-RUN         mkdir /etc/service/dnsmasq
-ADD         dnsmasq.sh /etc/service/dnsmasq/run
 RUN         mkdir /etc/service/nginx
 ADD         nginx.sh /etc/service/nginx/run
 RUN         chmod +x /etc/service/nginx/run

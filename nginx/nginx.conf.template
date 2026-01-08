@@ -83,7 +83,6 @@ http {
     }
 
     location = /auth {
-      resolver 127.0.0.1;
       proxy_pass $avalon_backend/authorize.txt?token=$token&name=$stream;
       proxy_pass_request_body off;
       proxy_set_header Content-Length "";
