@@ -170,7 +170,7 @@ services:
       - SETTINGS__ACTIVE_STORAGE__SERVICE
       - SETTINGS__ACTIVE_STORAGE__BUCKET
     healthcheck:
-      test: curl --silent --show-error --fail-with-body http://avalon:3000/
+      test: curl --silent --show-error --fail-with-body http://avalon:3000/up
       interval: 2m30s
       timeout: 10s
       retries: 3
