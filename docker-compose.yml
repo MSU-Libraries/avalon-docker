@@ -70,6 +70,7 @@ services:
       - /opt/solr/avalon_conf
     environment:
       - SOLR_MODULES=analysis-extras,extraction
+      - SOLR_HEAP=3g
     healthcheck:
       test: curl --fail -s http://localhost:8983/ || exit 1
       interval: 1m30s
