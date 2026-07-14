@@ -84,7 +84,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: always
   hls:
-    image: avalonmediasystem/nginx:aws
+    image: avalonmediasystem/nginx:avalon-8.2
     depends_on:
       - avalon
     build:
@@ -94,11 +94,15 @@ services:
       options:
         awslogs-group: "${HLS_LOGGROUP}"
         awslogs-create-group: "true"
-    volumes:
-      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
     environment:
       - AVALON_DOMAIN=http://avalon:3000
       - AVALON_STREAMING_BUCKET
+      - AVALON_STREAMING_BUCKET_URL=http://$AVALON_STREAMING_BUCKET.s3.amazonaws.com/
+      - VOD_MODE=remote
+      - S3_BUCKET_NAME=$AVALON_STREAMING_BUCKET
+      - S3_SERVER=$AVALON_STREAMING_BUCKET.s3.amazonaws.com
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
     ports:
       - "8880:80"
     restart: always

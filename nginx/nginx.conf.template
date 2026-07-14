@@ -2,16 +2,23 @@ user nginx;
 worker_processes 4;
 daemon off;
 
+env AWS_ACCESS_KEY_ID;
+env AWS_SECRET_ACCESS_KEY;
+env S3_BUCKET_NAME;
+env S3_REGION;
+env S3_SERVER;
+
 events {
   worker_connections 1024;
 }
 
-
 http {
+  js_import /etc/nginx/include/signature4.js;
+  js_set $s3auth        signature4.signature;
+  js_set $awsDate       signature4.getAmzDatetime;
+
   server {
     listen $AVALON_STREAMING_PORT;
-
-    error_log stderr info;
 
     # The IP of a hard-coded server name in a 'proxy_pass' directive is resolved
     # only when Nginx starts, but the IP (or IPs) of Docker containers may
@@ -23,11 +30,11 @@ http {
     set $avalon_backend $AVALON_DOMAIN;
     set $aws_streaming_bucket_hostname $AVALON_STREAMING_BUCKET.s3.amazonaws.com;
 
-    vod_mode remote;
+    vod_mode $VOD_MODE;
     vod_upstream_location /s3;
     vod_last_modified 'Sun, 19 Nov 2000 08:52:00 GMT';
     vod_last_modified_types *;
-    vod_metadata_cache metadata_cache 1024m;
+    vod_metadata_cache metadata_cache 512m;
     vod_response_cache response_cache 128m;
     vod_hls_absolute_index_urls off;
     vod_hls_absolute_master_urls off;
@@ -37,13 +44,38 @@ http {
     open_file_cache_min_uses 1;
     open_file_cache_errors   on;
 
+    location /status {
+      vod_status;
+    }
+
     location ~ /s3/avalon/(.*) {
       internal;
+
+      # proxy_set_header skips setting header if value is empty so only set if s3 auth is enabled
+      set $auth_authz '';
+      set $auth_date '';
+      set $auth_sha '';
+
+      set $do_s3_auth $S3_AUTH;
+      if ($do_s3_auth) {
+        set $auth_authz $s3auth;
+        set $auth_date $awsDate;
+        # Hardcode hash for empty string since we're only ever doing GET requests
+        set $auth_sha "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+      }
+
+      proxy_set_header Authorization              $auth_authz;
+      proxy_set_header Host                       $S3_SERVER;
+      proxy_set_header x-amz-date                 $auth_date;
+      proxy_set_header x-amz-content-sha256       $auth_sha;
+
       proxy_pass http://$aws_streaming_bucket_hostname/$1;
     }
 
-    location ~ ^/avalon/(?<stream>.+/(?<resource>.+\.(?:m3u8|ts))) {
+    location ~ ^/avalon/(?<stream>.+)\/[^\/]+\.(?:m3u8|ts) {
+      alias /data/$stream;
       vod hls;
+
       gzip on;
       gzip_types application/x-mpegURL;
 
@@ -58,19 +90,24 @@ http {
       add_header Access-Control-Allow-Headers '*';
       add_header Access-Control-Expose-Headers 'Server,range,Content-Length,Content-Range';
       add_header Access-Control-Allow-Methods 'GET, HEAD, OPTIONS';
-      add_header Access-Control-Allow-Origin "*";
+      add_header Access-Control-Allow-Origin '*';
       expires 100d;
     }
 
-    location ~ ^/avalon/(.+/.+\.(?:mp3)) {
+    location ~ ^/avalon/(?<stream>.+/.+\.(?:mp3)) {
+      alias /data/$stream;
+      vod none;
+
       set $token "$arg_token";
       add_header X-Stream-Auth-Token "$token";
+
+      gzip on;
+      gzip_types audio/mp3;
 
       sub_filter_types audio/mp3;
       sub_filter_once off;
       sub_filter '.mp3' ".mp3?token=$token";
 
-      set $stream $1;
       auth_request /auth;
 
       add_header Access-Control-Allow-Headers '*';
@@ -78,8 +115,6 @@ http {
       add_header Access-Control-Allow-Methods 'GET, HEAD, OPTIONS';
       add_header Access-Control-Allow-Origin "*";
       expires 100d;
-
-      proxy_pass http://$aws_streaming_bucket_hostname/$stream;
     }
 
     location = /auth {
@@ -87,10 +122,6 @@ http {
       proxy_pass_request_body off;
       proxy_set_header Content-Length "";
       proxy_set_header X-Original-URI $request_uri;
-    }
-
-    location /status {
-      vod_status;
     }
 
     location /crossdomain.xml {
