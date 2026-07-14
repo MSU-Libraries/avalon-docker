@@ -94,6 +94,8 @@ services:
       options:
         awslogs-group: "${HLS_LOGGROUP}"
         awslogs-create-group: "true"
+    volumes:
+      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template:ro
     environment:
       - AVALON_DOMAIN=http://avalon:3000
       - AVALON_STREAMING_BUCKET
