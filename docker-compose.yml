@@ -96,6 +96,7 @@ services:
         awslogs-create-group: "true"
     volumes:
       - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template:ro
+      - ./nginx/nginx.sh:/etc/runit/runsvdir/default/nginx/run:ro
     environment:
       - AVALON_DOMAIN=http://avalon:3000
       - AVALON_STREAMING_BUCKET
