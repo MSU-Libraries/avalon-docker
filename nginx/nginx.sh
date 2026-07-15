@@ -18,11 +18,12 @@ fi
 
 export AVALON_DOMAIN
 export AVALON_STREAMING_PORT
+export AVALON_STREAMING_BUCKET
 export AVALON_STREAMING_BUCKET_URL
 export VOD_MODE
 export S3_REGION
 export S3_SERVER
 export S3_AUTH
-envsubst '$AVALON_DOMAIN,$AVALON_STREAMING_PORT,$AVALON_STREAMING_BUCKET_URL,$VOD_MODE,$S3_SERVER,$S3_AUTH' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+envsubst '$AVALON_DOMAIN,$AVALON_STREAMING_PORT,$AVALON_STREAMING_BUCKET,$AVALON_STREAMING_BUCKET_URL,$VOD_MODE,$S3_SERVER,$S3_AUTH' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 
 exec /usr/local/nginx/sbin/nginx
