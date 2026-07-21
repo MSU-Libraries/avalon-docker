@@ -94,34 +94,29 @@ http {
       expires 100d;
     }
 
-    location ~ ^/avalon/(?<stream>.+/.+\.(?:mp3)) {
-      alias /data/$stream;
-      vod none;
+    location ~ ^/avalon/.+/.+\.mp3$ {
+        set $token "$arg_token";
+        auth_request /auth;
 
-      set $token "$arg_token";
-      add_header X-Stream-Auth-Token "$token";
+        add_header X-Stream-Auth-Token "$token";
+        add_header Access-Control-Allow-Headers '*';
+        add_header Access-Control-Expose-Headers 'Server,range,Content-Length,Content-Range';
+        add_header Access-Control-Allow-Methods 'GET, HEAD, OPTIONS';
+        add_header Access-Control-Allow-Origin '*';
+        expires 100d;
 
-      gzip on;
-      gzip_types audio/mp3;
+        set $args "";
+        rewrite ^/avalon/(.*)$ /$1 break;
 
-      sub_filter_types audio/mp3;
-      sub_filter_once off;
-      sub_filter '.mp3' ".mp3?token=$token";
-
-      auth_request /auth;
-
-      add_header Access-Control-Allow-Headers '*';
-      add_header Access-Control-Expose-Headers 'Server,range,Content-Length,Content-Range';
-      add_header Access-Control-Allow-Methods 'GET, HEAD, OPTIONS';
-      add_header Access-Control-Allow-Origin "*";
-      expires 100d;
+        proxy_set_header Host $aws_streaming_bucket_hostname;
+        proxy_pass http://$aws_streaming_bucket_hostname;
     }
 
     location = /auth {
-      proxy_pass $avalon_backend/authorize.txt?token=$token&name=$stream;
-      proxy_pass_request_body off;
-      proxy_set_header Content-Length "";
-      proxy_set_header X-Original-URI $request_uri;
+        proxy_pass $avalon_backend/authorize.txt?token=$token&name=$request_uri;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header X-Original-URI $request_uri;
     }
 
     location /crossdomain.xml {
